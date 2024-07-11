@@ -2041,7 +2041,7 @@ async function init() {
                     description: 'Gives a list of seeders',
                 },
                 {
-                    name: 'montlytopseed',
+                    name: 'monthlytopseed',
                     description: 'Gives a list of seeders for the current month',
                 },
                 {
@@ -2286,8 +2286,8 @@ async function init() {
                         case 'topseed':
                             topSeedMessage(sender, interaction)
                             break;
-                        case 'montlytopseed':
-                            montlyTopSeedMessage(sender, interaction)
+                        case 'monthlytopseed':
+                            monthlyTopSeedMessage(sender, interaction)
                             break;
                         // case 'userinfo':
                         //     console.log(interaction.member)
@@ -2429,8 +2429,8 @@ async function init() {
                         case 'topseed':
                             if (idsplit[ 1 ] == 'page') topSeedMessage(sender, interaction, idsplit[ 2 ])
                             break;
-                        case 'montlytopseed':
-                            montlyTopSeedMessage(sender, interaction)
+                        case 'monthlytopseed':
+                            monthlyTopSeedMessage(sender, interaction)
                             break;
                     }
                 } else if (interaction.isModalSubmit()) {
@@ -2462,7 +2462,7 @@ async function init() {
                 }
             }
 
-            async function montlyTopSeedMessage(sender, interaction, page = 0) {
+            async function monthlyTopSeedMessage(sender, interaction, page = 0) {
                 const sender_id = `${sender.id}`;
                 // console.log(interaction)
                 mongoConn(async dbo => {
