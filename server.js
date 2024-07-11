@@ -2041,6 +2041,10 @@ async function init() {
                     description: 'Gives a list of seeders',
                 },
                 {
+                    name: 'montlytopseed',
+                    description: 'Gives a list of seeders for the current month',
+                },
+                {
                     name: 'profile',
                     description: 'Links the Discord profile to the Steam profile',
                     options: [
@@ -2282,6 +2286,9 @@ async function init() {
                         case 'topseed':
                             topSeedMessage(sender, interaction)
                             break;
+                        case 'montlytopseed':
+                            montlyTopSeedMessage(sender, interaction)
+                            break;
                         // case 'userinfo':
                         //     console.log(interaction.member)
                         //     interaction.reply({ content: "ok", ephemeral: true })
@@ -2422,6 +2429,9 @@ async function init() {
                         case 'topseed':
                             if (idsplit[ 1 ] == 'page') topSeedMessage(sender, interaction, idsplit[ 2 ])
                             break;
+                        case 'montlytopseed':
+                            montlyTopSeedMessage(sender, interaction)
+                            break;
                     }
                 } else if (interaction.isModalSubmit()) {
                     interaction.reply({ content: "Modal received", ephemeral: true })
@@ -2452,11 +2462,12 @@ async function init() {
                 }
             }
 
-            async function topSeedMessage(sender, interaction, page = 0) {
+            async function montlyTopSeedMessage(sender, interaction, page = 0) {
                 const sender_id = `${sender.id}`;
                 // console.log(interaction)
                 mongoConn(async dbo => {
-                    const monthlyKey = `monthly_seeding_points.${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+                    const month = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
+                    const monthlyKey = `monthly_seeding_points.${month}`;
                     let res = await dbo.collection("players").find().skip(page * 10).limit(11).sort({ [monthlyKey]: -1 }).toArray();
                     // await interaction.deferReply({ ephemeral: false });
 
@@ -2472,6 +2483,61 @@ async function init() {
                         .join(' ')
                         return
                     })
+
+                    const messageContent = {
+                        // content: Discord.userMention(sender_id),
+                        // embeds: res.splice(0, 10).map((e, i) => ({
+                        //     title: `${page * 10 + i + 1}.${e.username}`,
+                        //     url: steamProfileUrl(e.steamid64),
+                        //     fields: [
+                        //         { name: 'Score', value: Math.floor(100 * (e.seeding_points || 0) / requiredPoints) + "%", inline: true },
+                        //         { name: 'SteamID', value: Discord.hyperlink(e.steamid64, steamProfileUrl(e.steamid64)), inline: true },
+                        //         { name: 'Discord Username', value:  : 'Not Linked', inline: true }
+                        //     ]
+                        // })),
+                        embeds: [ {
+                            color: Discord.resolveColor(config.app_personalization.accent_color),
+                            title: `Monthly Top 10 Seeders (${month})`,
+                            description: block.join('\n')
+                        } ],
+                        components: [
+                            new Discord.ActionRowBuilder()
+                                .addComponents(
+                                    new Discord.ButtonBuilder()
+                                        .setCustomId(`topseed:page:${+ page - 1}`)
+                                        .setLabel('⮜')
+                                        .setStyle(Discord.ButtonStyle.Success)
+                                        .setDisabled(page - 1 < 0)
+                                    ,
+                                    new Discord.ButtonBuilder()
+                                        .setCustomId(`topseed:page:${+page + 1}`)
+                                        .setLabel('⮞')
+                                        .setStyle(Discord.ButtonStyle.Success)
+                                        .setDisabled(res.length == 0),
+                                )
+                        ],
+                        ephemeral: false
+                    }
+
+                    if (interaction.isButton()) {
+                        // const sentReply = await interaction.webhook.fetchMessage();
+                        await interaction.deferUpdate();
+                        await interaction.message.edit(messageContent)
+                    } else
+                        await interaction.reply(messageContent);
+                })
+
+            async function topSeedMessage(sender, interaction, page = 0) {
+                const sender_id = `${sender.id}`;
+                // console.log(interaction)
+                mongoConn(async dbo => {
+                    let res = await dbo.collection("players").find({ seeding_points: { $gte: 1 } }).skip(page * 10).limit(11).sort({ seeding_points: -1 }).toArray();
+                    // await interaction.deferReply({ ephemeral: false });
+                    const st = await dbo.collection('configs').findOne({ category: 'seeding_tracker' })
+                    const stConf = st.config;
+                    const requiredPoints = stConf.reward_needed_time.value * (stConf.reward_needed_time.option / 1000 / 60)
+
+                    const block = res.splice(0, 10).map((e, i) => [ `**${page * 10 + i + 1})**`, `${Discord.hyperlink(e.username, steamProfileUrl(e.steamid64))}`, e.discord_user_id ? Discord.userMention(e.discord_user_id) : null, `*${Math.floor(100 * (e.seeding_points || 0) / requiredPoints)}%*` ].filter(e => e != null).join(' '))
 
                     const messageContent = {
                         // content: Discord.userMention(sender_id),
